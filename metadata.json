@@ -1,0 +1,6 @@
+{
+  "name": "Simple Wallet",
+  "description": "Микро-банкинг для тренировки автотестов. Управление балансом и переводы между пользователями.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

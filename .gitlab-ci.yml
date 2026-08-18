@@ -1,0 +1,99 @@
+image: nikolaik/python-nodejs:python3.12-nodejs20
+
+variables:
+  BASE_URL: http://localhost:3000
+  SQL_HOST: postgres
+  SQL_DB_NAME: wallet_db
+  SQL_PORT: 5432
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.pip-cache"
+
+services:
+  - name: postgres:15
+    alias: postgres
+
+stages:
+  - install
+  - test
+  - report
+
+cache:
+  paths:
+    - .pip-cache/
+    - node_modules/
+
+install_dependencies:
+  stage: install
+  script:
+    - python -m venv .venv
+    - source .venv/bin/activate
+    - pip install -r requirements.txt
+    - npm install
+  artifacts:
+    paths:
+      - .venv/
+      - node_modules/
+    expire_in: 1 hour
+
+api_tests:
+  stage: test
+  script:
+    - source .venv/bin/activate
+    - npm run db:push
+    - npm run dev &
+    - sleep 10
+    - pytest -m "api and smoke" --alluredir=allure-results
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH != "main"
+  artifacts:
+    when: always
+    paths:
+      - allure-results/
+
+ui_smoke_tests:
+  stage: test
+  image: mcr.microsoft.com/playwright/python:v1.44.0-jammy
+  script:
+    - source .venv/bin/acticate
+    - playwright install chromium
+    - npm run db:push
+    - npm run dev &
+    - sleep 10
+    - pytest -m "api or ui" --tracing retain-on-failure --alluredir=allure-results
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+  artifacts:
+    when: always
+    paths:
+      - allure-results/
+      - test-results/
+
+#full_regression:
+#  stage: test
+#  script:
+#    - source .venv/bin/activate
+#    - playwright install chromium
+#    - npm run db:push
+#    - npm run dev &
+#    - sleep 10
+#    - pytest --tracnig retain-on-failure --alluredir=allure-results/
+#  rules:
+#    - if: $CI_PIPELINE_SOURCE == "schedule"
+#  artifacts:
+#    when: always
+#    paths:
+#      - allure-results/
+#      - test-results/
+
+pages:
+  stage: report
+  image: frankescobar/allure-docker-service
+  script:
+    - allure generate allure-results -o public --clean
+    - echo "============================================================="
+    - echo "ALLURE REPORT IS READY! View in here:"
+    - echo "$CI_PAGES_URL"
+    - echo "============================================================="
+  artifacts:
+    paths:
+      - public/
+  when: always

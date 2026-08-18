@@ -1,0 +1,216 @@
+openapi: 3.0.0
+info:
+  title: Simple Wallet API
+  description: API для тренировочного сервиса "Микро-банкинг"
+  version: 2.0.0
+servers:
+  - url: /
+paths:
+  /api/auth/register:
+    post:
+      summary: Регистрация нового пользователя
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string }
+      responses:
+        201: { description: Created }
+        400: { description: Bad Request }
+
+  /api/auth/login:
+    post:
+      summary: Аутентификация пользователя
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string }
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+        401: { description: Unauthorized }
+
+  /api/user/me:
+    get:
+      summary: Получение информации о текущем пользователе
+      tags: [User]
+      security: [{ bearerAuth: [] }]
+      responses:
+        200: { description: OK }
+
+  /api/user/profile:
+    patch:
+      summary: Обновление профиля пользователя
+      tags: [User]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username: { type: string }
+      responses:
+        200: { description: OK }
+        400: { description: Username taken }
+
+  /api/user/topup:
+    post:
+      summary: Пополнение баланса
+      tags: [User]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount: { type: number }
+      responses:
+        200: { description: OK }
+
+  /api/users:
+    get:
+      summary: Получение списка всех пользователей
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: integer }
+                    username: { type: string }
+                    balance: { type: string }
+                    createdAt: { type: string }
+
+  /api/users/{id}:
+    delete:
+      summary: Удаление пользователя
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        200: { description: OK }
+        500: { description: Error }
+
+  /api/transactions:
+    get:
+      summary: Получение истории транзакций с фильтрацией
+      tags: [Transactions]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string }
+          description: Поиск по описанию
+        - name: category
+          in: query
+          schema: { type: string }
+          description: Фильтр по категории (food, transport, entertainment, shopping, other, general)
+        - name: type
+          in: query
+          schema: { type: string, enum: [sent, received] }
+          description: Фильтр по типу операции
+      responses:
+        200: { description: OK }
+
+  /api/transactions/transfer:
+    post:
+      summary: Перевод средств другому пользователю
+      tags: [Transactions]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [receiverUsername, amount]
+              properties:
+                receiverUsername: { type: string }
+                amount: { type: number }
+                description: { type: string }
+                category: { type: string }
+      responses:
+        200: { description: OK }
+        400: { description: Error }
+
+  /api/savings:
+    get:
+      summary: Список копилок пользователя
+      tags: [Savings]
+      security: [{ bearerAuth: [] }]
+      responses:
+        200: { description: OK }
+    post:
+      summary: Создание новой копилки
+      tags: [Savings]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                target: { type: number }
+      responses:
+        201: { description: Created }
+
+  /api/savings/{id}/deposit:
+    post:
+      summary: Пополнение копилки с основного счета
+      tags: [Savings]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount]
+              properties:
+                amount: { type: number }
+      responses:
+        200: { description: OK }
+        400: { description: Error }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
